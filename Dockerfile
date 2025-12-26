@@ -1,19 +1,34 @@
-FROM golang:1.22 AS builder
+# Use lightweight Go base image
+FROM golang:1.25-alpine AS builder
 
+# Set working directory
 WORKDIR /app
+
+# Copy go mod files
 COPY go.mod go.sum ./
+
+# Download dependencies
 RUN go mod download
 
+# Copy source code
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
 
-FROM registry.access.redhat.com/ubi8/ubi
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main .
 
-WORKDIR /app
-COPY --from=builder /app/app /app/app
+# Use minimal base image for final stage
+FROM alpine:latest
 
-RUN chmod +x /app/app
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
 
+WORKDIR /root/
+
+# Copy binary from builder
+COPY --from=builder /app/main .
+
+# Expose port
 EXPOSE 8080
-CMD ["/app/app"]
 
+# Run the application
+CMD ["./main"]
