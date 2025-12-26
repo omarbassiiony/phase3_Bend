@@ -1,4 +1,3 @@
-# ---------- Build stage ----------
 FROM golang:1.22 AS builder
 
 WORKDIR /app
@@ -8,14 +7,13 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
 
-# ---------- Runtime stage ----------
-FROM registry.access.redhat.com/ubi8/ubi-micro
+FROM registry.access.redhat.com/ubi8/ubi
 
 WORKDIR /app
 COPY --from=builder /app/app /app/app
 
-# Run as non-root (OpenShift requirement)
-USER 1001
+RUN chmod +x /app/app
 
 EXPOSE 8080
 CMD ["/app/app"]
+
